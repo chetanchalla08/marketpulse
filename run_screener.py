@@ -10,6 +10,7 @@ from src.data_fetcher import fetch_daily_bars
 from src.indicators import add_all_indicators
 from src.screener import evaluate_rules
 from src.db import get_session, IndicatorSnapshot, Signal, create_tables
+from src.alerts import send_discord_alert
 
 WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
 
@@ -57,13 +58,19 @@ def run_screener():
             # Check all rules
             triggered = evaluate_rules(enriched, symbol)
             store_signals(session, triggered)
+            send_discord_alert(triggered)
 
             if triggered:
                 print(f"{symbol}: {len(triggered)} signal(s) triggered")
                 for sig in triggered:
                     print(f"   [{sig['rule_name']}] {sig['details']}")
             else:
-                print(f"{symbol}: no signals (RSI={latest['rsi']:.1f}, close vs VWAP={'above' if latest['close'] > latest['vwap'] else 'below'})")
+                print(f"{symbol}: no signals")
+
+            # Always show the full indicator snapshot, regardless of whether a signal fired
+            print(f"   Close: {latest['close']:.2f} | RSI: {latest['rsi']:.2f} | "
+                  f"MACD: {latest['macd']:.4f} (signal: {latest['macd_signal']:.4f}, hist: {latest['macd_hist']:.4f}) | "
+                  f"VWAP: {latest['vwap']:.2f}\n")
 
             total_signals += len(triggered)
 

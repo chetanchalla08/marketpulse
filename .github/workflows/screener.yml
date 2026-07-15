@@ -1,0 +1,30 @@
+name: MarketPulse Screener
+
+on:
+  schedule:
+    # Runs at 9:45 AM and 3:45 PM Eastern on weekdays (13:45 and 19:45 UTC)
+    - cron: '45 13,19 * * 1-5'
+  workflow_dispatch:  # lets you manually trigger a run from GitHub's UI too
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run screener
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python run_screener.py

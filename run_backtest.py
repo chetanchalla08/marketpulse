@@ -1,38 +1,44 @@
 """
-Week 4 milestone script: runs the backtest across your watchlist over
-~2 years of history and prints a summary report -- the real, quotable
-numbers for your resume/README.
+Runs the backtest across the full S&P 500 over ~2 years of history and
+prints a summary report -- the real, quotable numbers for your resume/README.
+
+Note: at 500-ticker x 2-year scale, this takes noticeably longer than the
+5-stock version did (still batched, but there's simply more data to process).
+Consider running this as a one-off rather than something you rerun casually.
 
 Run with: python run_backtest.py
 """
 
-from src.data_fetcher import fetch_daily_bars
+from src.data_fetcher import fetch_multiple_symbols
 from src.indicators import add_all_indicators
 from src.backtest import backtest_symbol, summarize_results
+from src.sp500 import fetch_sp500_tickers
 
-WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
+USE_SP500 = True
+MANUAL_WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
 LOOKBACK_DAYS = 730  # ~2 years
 
 
 def run_backtest():
+    watchlist = fetch_sp500_tickers() if USE_SP500 else MANUAL_WATCHLIST
+    print(f"Backtesting {len(watchlist)} ticker(s) over the last {LOOKBACK_DAYS} days...\n")
+
+    all_data = fetch_multiple_symbols(watchlist, lookback_days=LOOKBACK_DAYS)
+    print(f"\nFetched data for {len(all_data)}/{len(watchlist)} tickers. Running backtest...\n")
+
     all_results = []
-
-    print(f"Backtesting {WATCHLIST} over the last {LOOKBACK_DAYS} days...\n")
-
-    for symbol in WATCHLIST:
+    for symbol, df in all_data.items():
         try:
-            df = fetch_daily_bars(symbol, lookback_days=LOOKBACK_DAYS)
             enriched = add_all_indicators(df)
             results = backtest_symbol(enriched, symbol)
             all_results.extend(results)
-            print(f"  {symbol}: {len(results)} historical trigger(s) found across all rules")
-        except Exception as e:
-            print(f"  [ERROR] {symbol}: {e}")
+        except Exception:
+            continue
 
-    print(f"\nTotal trigger events across watchlist: {len(all_results)}\n")
+    print(f"Total trigger events across watchlist: {len(all_results)}\n")
 
     if not all_results:
-        print("No historical triggers found -- try widening the watchlist or lookback period.")
+        print("No historical triggers found.")
         return
 
     summary = summarize_results(all_results)

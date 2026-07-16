@@ -1,18 +1,24 @@
 """
-Week 2 milestone script: fetches data, computes indicators, STORES a
-snapshot in the database, evaluates screening rules, and stores + prints
-any triggered signals.
+Fetches data, computes indicators, STORES a snapshot in the database,
+evaluates screening rules, and stores + alerts on any triggered signals.
+
+Runs across the full S&P 500 by default. Uses batched API requests
+(see fetch_multiple_symbols in data_fetcher.py) so this stays fast and
+avoids hitting Alpaca's rate limits, even at 500-ticker scale.
 
 Run with: python run_screener.py
 """
 
-from src.data_fetcher import fetch_daily_bars
+from src.data_fetcher import fetch_multiple_symbols
 from src.indicators import add_all_indicators
 from src.screener import evaluate_rules
 from src.db import get_session, IndicatorSnapshot, Signal, create_tables
 from src.alerts import send_discord_alert
+from src.sp500 import fetch_sp500_tickers
 
-WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
+# Set USE_SP500 = False to fall back to a small manual watchlist for quick local testing.
+USE_SP500 = True
+MANUAL_WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
 
 
 def store_snapshot(session, symbol: str, latest_row) -> None:
@@ -20,7 +26,7 @@ def store_snapshot(session, symbol: str, latest_row) -> None:
     # database driver doesn't know how to insert numpy scalar types directly.
     snapshot = IndicatorSnapshot(
         symbol=symbol,
-        timestamp=latest_row.name,  # the row's index value is the timestamp
+        timestamp=latest_row.name,
         close=float(latest_row["close"]),
         volume=float(latest_row["volume"]),
         rsi=float(latest_row["rsi"]),
@@ -38,49 +44,52 @@ def store_signals(session, triggered_signals: list[dict]) -> None:
 
 
 def run_screener():
-    # Make sure tables exist (safe to call every run — it's a no-op if they already do)
     create_tables()
-
     session = get_session()
+
+    watchlist = fetch_sp500_tickers() if USE_SP500 else MANUAL_WATCHLIST
+    print(f"Screening {len(watchlist)} ticker(s)...\n")
+
+    all_data = fetch_multiple_symbols(watchlist, lookback_days=100)
+    print(f"\nFetched data for {len(all_data)}/{len(watchlist)} tickers. Evaluating rules...\n")
+
     total_signals = 0
+    all_triggered = []
+    errors = 0
 
-    print(f"Screening {WATCHLIST}...\n")
-
-    for symbol in WATCHLIST:
+    for symbol, df in all_data.items():
         try:
-            df = fetch_daily_bars(symbol, lookback_days=100)
             enriched = add_all_indicators(df)
             latest = enriched.iloc[-1]
 
-            # Save this run's indicator values to the DB (builds history for backtesting)
             store_snapshot(session, symbol, latest)
 
-            # Check all rules
             triggered = evaluate_rules(enriched, symbol)
             store_signals(session, triggered)
-            send_discord_alert(triggered)
+            all_triggered.extend(triggered)
 
+            # With 500 tickers, only print the ones that actually matter —
+            # a full per-ticker dump would be hundreds of lines of noise.
             if triggered:
                 print(f"{symbol}: {len(triggered)} signal(s) triggered")
                 for sig in triggered:
                     print(f"   [{sig['rule_name']}] {sig['details']}")
-            else:
-                print(f"{symbol}: no signals")
-
-            # Always show the full indicator snapshot, regardless of whether a signal fired
-            print(f"   Close: {latest['close']:.2f} | RSI: {latest['rsi']:.2f} | "
-                  f"MACD: {latest['macd']:.4f} (signal: {latest['macd_signal']:.4f}, hist: {latest['macd_hist']:.4f}) | "
-                  f"VWAP: {latest['vwap']:.2f}\n")
 
             total_signals += len(triggered)
 
         except Exception as e:
-            print(f"  [ERROR] {symbol}: {e}")
+            errors += 1
+            # Don't print every single error at scale — just count them.
+            continue
 
     session.commit()
     session.close()
 
-    print(f"\nDone. {total_signals} total signal(s) stored to the database this run.")
+    # Send one batched Discord alert for everything that triggered this run.
+    send_discord_alert(all_triggered)
+
+    print(f"\nDone. Screened {len(all_data)} tickers, {total_signals} total signal(s) triggered, "
+          f"{errors} ticker(s) failed to process.")
 
 
 if __name__ == "__main__":

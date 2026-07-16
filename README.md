@@ -57,15 +57,15 @@ The Python pipeline above is the sole writer to Postgres. Two read paths sit on 
 
 ## Backtest results
 
-Backtested across AAPL, TSLA, NVDA, SPY, and MSFT over the trailing 2 years (153 total trigger events):
+Backtested across all 503 S&P 500 tickers over the trailing 2 years (17,855 total trigger events):
 
 | Rule | Triggers | 1-day win rate | 3-day win rate | 5-day win rate | 3-day avg return |
 |---|---|---|---|---|---|
-| Oversold reclaim VWAP | 38 | 50.0% | **63.2%** | 55.3% | **+0.80%** |
-| MACD bullish crossover | 99 | 53.5% | 51.5% | 51.5% | +0.48% |
-| Overbought warning | 16 | 50.0% | 62.5% | 43.8% | +0.62% |
+| Oversold reclaim VWAP | 6,982 | 50.0% | **54.2%** | 53.6% | +0.21% |
+| MACD bullish crossover | 9,462 | 51.5% | 54.1% | 53.5% | **+0.27%** |
+| Overbought warning | 1,411 | 48.9% | 51.5% | 50.8% | +0.21% |
 
-**Caveats, honestly stated:** this is a relatively small sample (5 tickers, ~150 events) over a period where markets broadly trended upward, and does not account for trading costs, slippage, or execution timing. These results should be read as "this rule shows a measurable historical edge worth further testing," not as a validated trading strategy.
+**Caveats, honestly stated:** this is a much larger, more statistically meaningful sample than the project's early 5-ticker runs (153 events), but still does not account for trading costs, slippage, or execution timing, and covers a single 2-year window. A win rate a few points above 50% across thousands of events is a real, measurable edge — not a large one, and not a validated trading strategy on its own. Read this as "these rules show a modest but consistent historical edge worth further testing," not as investment advice.
 
 ## Tech stack
 

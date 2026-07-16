@@ -178,6 +178,27 @@ pip install -r streamlit_app/requirements.txt
 streamlit run streamlit_app/app.py
 ```
 
+## Deployment
+
+The React dashboard and Spring Boot API are set up to deploy publicly (Vercel + Render); Streamlit stays local-only by design, since it's an internal exploration tool rather than something meant to be public. Deploying requires a few manual steps in each platform's dashboard (account/GitHub-connection steps can't be scripted) — see `render.yaml` and `frontend/vercel.json` for the config already in the repo.
+
+**Render (API) — deploy first, the frontend needs its URL:**
+1. Sign up/log in at [render.com](https://render.com) (GitHub login is easiest).
+2. New → Blueprint → connect the `marketpulse` repo. Render detects `render.yaml` at the repo root.
+3. Fill in the prompted env vars: `SPRING_DATASOURCE_URL` (JDBC form, e.g. `jdbc:postgresql://<host>:5432/<db>` — same host/port/db as `DATABASE_URL`, just with the `jdbc:` prefix), `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`. Leave `ALLOWED_ORIGIN` as the default for now.
+4. Apply → wait for the first Docker build → copy the resulting service URL.
+
+**Vercel (dashboard) — deploy second:**
+1. Sign up/log in at [vercel.com](https://vercel.com) (GitHub login).
+2. Add New → Project → import the `marketpulse` repo.
+3. Set **Root Directory to `frontend`** (this is a monorepo — Vercel needs to know where the Vite project lives). Framework preset auto-detects as Vite.
+4. Add env var `VITE_API_BASE_URL` = the Render URL from above (no trailing slash).
+5. Deploy → copy the resulting Vercel URL.
+
+**Back to Render:** edit the `ALLOWED_ORIGIN` env var to the Vercel URL, save — Render auto-redeploys with CORS now allowing the live frontend.
+
+**Known limitation:** Render's free plan spins down after ~15 minutes idle; the first request after that takes 30–60s to cold-start. Expected behavior on a free tier, not a bug — worth a heads-up if sharing the link.
+
 ## Automated runs
 
 The screener runs automatically on GitHub Actions on weekdays during market hours (see `.github/workflows/screener.yml`), using repository secrets for credentials — no local machine needs to stay on.
@@ -191,4 +212,4 @@ Rules are defined as small, independent functions in `src/screener.py` and regis
 - Expand the backtest sample size (now across the full S&P 500) for even more statistically meaningful results
 - Add transaction cost/slippage modeling to the backtest
 - Add position sizing / risk-based filtering on top of raw signal triggers
-- Deploy the API, dashboard, and Streamlit tool (currently local-only) — e.g. Spring Boot to Render/Fly.io, React to Vercel/Netlify, Streamlit to Streamlit Community Cloud
+- Custom domain + a paid Render tier to avoid free-tier cold starts on the public demo

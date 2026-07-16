@@ -5,6 +5,27 @@ import type { IndicatorSnapshot } from '../api/types'
 
 type SortKey = 'symbol' | 'close' | 'rsi' | 'macdHist' | 'vwap'
 
+function SortArrow({ active, asc }: { active: boolean; asc: boolean }) {
+  if (!active) return null
+  return <span className="ml-1 text-accent">{asc ? '↑' : '↓'}</span>
+}
+
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 10 }).map((_, i) => (
+        <tr key={i} className="border-t border-border">
+          {Array.from({ length: 6 }).map((__, j) => (
+            <td key={j} className="px-4 py-3">
+              <div className="skeleton w-16" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
+}
+
 export function ScreenerPage() {
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('symbol')
@@ -31,6 +52,13 @@ export function ScreenerPage() {
     return sorted
   }, [data, search, sortKey, sortAsc])
 
+  const stats = useMemo(() => {
+    if (!data) return null
+    const oversold = data.filter((r) => r.rsi < 35).length
+    const overbought = data.filter((r) => r.rsi > 70).length
+    return { total: data.length, oversold, overbought }
+  }, [data])
+
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
       setSortAsc((asc) => !asc)
@@ -42,46 +70,64 @@ export function ScreenerPage() {
 
   return (
     <div>
-      <h1>Screener</h1>
-      <p className="subtitle">
-        Latest indicator snapshot per symbol across the S&amp;P 500 ({data?.length ?? 0} tickers).
-      </p>
+      <h1 className="page-title">Screener</h1>
+      <p className="page-subtitle">Latest indicator snapshot per symbol across the S&amp;P 500.</p>
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-label">Tickers screened</div>
+          <div className="stat-value">{stats?.total ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Oversold (RSI &lt; 35)</div>
+          <div className="stat-value text-emerald-600 dark:text-emerald-400">{stats?.oversold ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Overbought (RSI &gt; 70)</div>
+          <div className="stat-value text-rose-600 dark:text-rose-400">{stats?.overbought ?? '—'}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Showing</div>
+          <div className="stat-value">{Math.min(rows.length, 200)}</div>
+        </div>
+      </div>
 
       <div className="filters">
         <input
           type="text"
+          className="input-field"
           placeholder="Search symbol..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {isLoading && <p>Loading watchlist...</p>}
-      {isError && <p className="error">Failed to load watchlist: {(error as Error).message}</p>}
+      {isError && <p className="error-text mb-4">Failed to load watchlist: {(error as Error).message}</p>}
 
-      {data && (
-        <table>
+      <div className="table-wrap">
+        <table className="data-table">
           <thead>
             <tr>
               <th className="sortable" onClick={() => toggleSort('symbol')}>
-                Symbol
+                Symbol <SortArrow active={sortKey === 'symbol'} asc={sortAsc} />
               </th>
               <th className="sortable" onClick={() => toggleSort('close')}>
-                Close
+                Close <SortArrow active={sortKey === 'close'} asc={sortAsc} />
               </th>
               <th className="sortable" onClick={() => toggleSort('rsi')}>
-                RSI
+                RSI <SortArrow active={sortKey === 'rsi'} asc={sortAsc} />
               </th>
               <th className="sortable" onClick={() => toggleSort('macdHist')}>
-                MACD Hist
+                MACD Hist <SortArrow active={sortKey === 'macdHist'} asc={sortAsc} />
               </th>
               <th className="sortable" onClick={() => toggleSort('vwap')}>
-                VWAP
+                VWAP <SortArrow active={sortKey === 'vwap'} asc={sortAsc} />
               </th>
               <th>As of</th>
             </tr>
           </thead>
           <tbody>
+            {isLoading && <SkeletonRows />}
             {rows.slice(0, 200).map((r) => (
               <tr key={r.symbol}>
                 <td className="symbol">{r.symbol}</td>
@@ -96,9 +142,9 @@ export function ScreenerPage() {
             ))}
           </tbody>
         </table>
-      )}
+      </div>
       {rows.length > 200 && (
-        <p className="subtitle">Showing first 200 of {rows.length} matching tickers.</p>
+        <p className="page-subtitle mt-3">Showing first 200 of {rows.length} matching tickers.</p>
       )}
     </div>
   )

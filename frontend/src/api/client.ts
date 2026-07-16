@@ -1,7 +1,11 @@
 import type { BacktestResult, IndicatorSnapshot, Page, Signal } from './types'
 
+// Empty by default so local dev keeps using the Vite proxy to localhost:8080
+// (see vite.config.ts). Set in production (Vercel) to the deployed API's URL.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
+
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(path)
+  const res = await fetch(`${API_BASE}${path}`)
   if (!res.ok) {
     throw new Error(`${path} failed: ${res.status} ${res.statusText}`)
   }

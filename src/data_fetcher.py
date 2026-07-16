@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from dotenv import load_dotenv
+from alpaca.data.enums import DataFeed
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
@@ -48,6 +49,7 @@ def fetch_daily_bars(symbol: str, lookback_days: int = 200) -> pd.DataFrame:
         timeframe=TimeFrame.Day,
         start=start,
         end=end,
+        feed=DataFeed.IEX,
     )
     bars = client.get_stock_bars(request).df
 
@@ -91,6 +93,7 @@ def fetch_multiple_symbols(symbols: list[str], lookback_days: int = 200, batch_s
                 timeframe=TimeFrame.Day,
                 start=start,
                 end=end,
+                feed=DataFeed.IEX,
             )
             bars = client.get_stock_bars(request).df
 
@@ -111,8 +114,8 @@ def fetch_multiple_symbols(symbols: list[str], lookback_days: int = 200, batch_s
             for symbol in batch:
                 try:
                     result[symbol] = fetch_daily_bars(symbol, lookback_days)
-                except Exception:
-                    print(f"    [WARN] Skipping invalid/unavailable symbol: {symbol}")
+                except Exception as symbol_error:
+                    print(f"    [WARN] Skipping {symbol}: {symbol_error}")
 
     return result
 

@@ -9,14 +9,33 @@ Consider running this as a one-off rather than something you rerun casually.
 Run with: python run_backtest.py
 """
 
+from datetime import datetime
+
 from src.data_fetcher import fetch_multiple_symbols
 from src.indicators import add_all_indicators
 from src.backtest import backtest_symbol, summarize_results
 from src.sp500 import fetch_sp500_tickers
+from src.db import get_session, BacktestResult, create_tables
 
 USE_SP500 = True
 MANUAL_WATCHLIST = ["AAPL", "TSLA", "NVDA", "SPY", "MSFT"]
 LOOKBACK_DAYS = 730  # ~2 years
+HORIZONS = (1, 3, 5)
+
+
+def store_backtest_results(session, summary_df, horizons=HORIZONS) -> None:
+    run_at = datetime.utcnow()
+    for _, row in summary_df.iterrows():
+        for h in horizons:
+            session.add(BacktestResult(
+                run_at=run_at,
+                rule_name=row["rule_name"],
+                horizon_days=h,
+                trigger_count=int(row["trigger_count"]),
+                win_rate_pct=float(row[f"win_rate_{h}d"]),
+                avg_return_pct=float(row[f"avg_return_{h}d_pct"]),
+            ))
+    session.commit()
 
 
 def run_backtest():
@@ -42,6 +61,11 @@ def run_backtest():
         return
 
     summary = summarize_results(all_results)
+
+    create_tables()
+    session = get_session()
+    store_backtest_results(session, summary)
+    session.close()
 
     print("=" * 90)
     print("BACKTEST SUMMARY (all symbols combined, per rule)")

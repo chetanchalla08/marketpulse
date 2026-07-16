@@ -2,3 +2,15 @@
 venv/
 __pycache__/
 *.pyc
+.claude/
+
+# Spring Boot (api/)
+api/target/
+
+# React (frontend/)
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Streamlit
+streamlit_app/__pycache__/

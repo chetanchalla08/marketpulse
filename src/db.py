@@ -55,6 +55,20 @@ class Signal(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class BacktestResult(Base):
+    """One row = one rule's outcome stats at one horizon, for one backtest run."""
+    __tablename__ = "backtest_results"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_at = Column(DateTime, nullable=False, index=True, default=datetime.utcnow)
+    rule_name = Column(String, nullable=False, index=True)
+    horizon_days = Column(Integer, nullable=False)
+    trigger_count = Column(Integer, nullable=False)
+    win_rate_pct = Column(Float, nullable=False)
+    avg_return_pct = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def get_engine():
     if not DATABASE_URL:
         raise EnvironmentError(

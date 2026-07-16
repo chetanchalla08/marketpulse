@@ -85,8 +85,8 @@ def run_screener():
     session.commit()
     session.close()
 
-    # Send one batched Discord alert for everything that triggered this run.
-    send_discord_alert(all_triggered)
+    # Send one batched Discord alert, including a heartbeat when no rules trigger.
+    send_discord_alert(all_triggered, screened_count=len(all_data), error_count=errors)
 
     print(f"\nDone. Screened {len(all_data)} tickers, {total_signals} total signal(s) triggered, "
           f"{errors} ticker(s) failed to process.")

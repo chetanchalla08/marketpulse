@@ -178,9 +178,9 @@ pip install -r streamlit_app/requirements.txt
 streamlit run streamlit_app/app.py
 ```
 
-## Deployment
+## Deployment (optional)
 
-The React dashboard and Spring Boot API are set up to deploy publicly (Vercel + Render); Streamlit stays local-only by design, since it's an internal exploration tool rather than something meant to be public. Deploying requires a few manual steps in each platform's dashboard (account/GitHub-connection steps can't be scripted) — see `render.yaml` and `frontend/vercel.json` for the config already in the repo.
+Everything above runs locally by design — the React dashboard, Spring Boot API, and Streamlit tool are all meant to be run on your own machine. The repo also includes ready-to-use config (`render.yaml`, `frontend/vercel.json`, `api/Dockerfile`) for deploying the React dashboard and Spring Boot API publicly if you want a live link at some point, since Streamlit is an internal tool rather than something meant to be public either way. Deploying is optional and involves a few manual steps in each platform's dashboard (account/GitHub-connection steps can't be scripted):
 
 **Render (API) — deploy first, the frontend needs its URL:**
 1. Sign up/log in at [render.com](https://render.com) (GitHub login is easiest).
